@@ -1,5 +1,8 @@
 package edu.eci.arsw.math;
 
+import java.util.ArrayList;
+import java.util.List;
+
 ///  <summary>
 ///  An implementation of the Bailey-Borwein-Plouffe formula for calculating hexadecimal
 ///  digits of pi.
@@ -11,14 +14,18 @@ public class PiDigits {
     private static int DigitsPerSum = 8;
     private static double Epsilon = 1e-17;
 
-    
+
     /**
      * Returns a range of hexadecimal digits of pi.
      * @param start The starting location of the range.
      * @param count The number of digits to return
      * @return An array containing the hexadecimal digits.
      */
-    public static byte[] getDigits(int start, int count) {
+    public static byte[] getDigits(int start, int count, int N) {
+        List<SumThread> threads = new ArrayList<>();
+        Object lockObject = new Object();
+        byte[] digits = new byte[count];
+        boolean threadIsRunning = true;
         if (start < 0) {
             throw new RuntimeException("Invalid Interval");
         }
@@ -27,87 +34,54 @@ public class PiDigits {
             throw new RuntimeException("Invalid Interval");
         }
 
-        byte[] digits = new byte[count];
-        double sum = 0;
+        createThread(start, DigitsPerSum, N, threads, lockObject);
 
-        for (int i = 0; i < count; i++) {
-            if (i % DigitsPerSum == 0) {
-                sum = 4 * sum(1, start)
-                        - 2 * sum(4, start)
-                        - sum(5, start)
-                        - sum(6, start);
-
-                start += DigitsPerSum;
+        try {
+            while (threadIsRunning){
+                threadIsRunning = false;
+                for (SumThread t : threads){
+                    if (t.isAlive()) {
+                        threadIsRunning = true;
+                        break;
+                    }
+                }
+                Thread.sleep(5000);
+                stopAndExecute(threads,lockObject);
             }
-
-            sum = 16 * (sum - Math.floor(sum));
-            digits[i] = (byte) sum;
+        } catch(InterruptedException e) {
+            e.printStackTrace();
         }
+
+        getResults(threads, digits, DigitsPerSum);
+
 
         return digits;
     }
 
-    /// <summary>
-    /// Returns the sum of 16^(n - k)/(8 * k + m) from 0 to k.
-    /// </summary>
-    /// <param name="m"></param>
-    /// <param name="n"></param>
-    /// <returns></returns>
-    private static double sum(int m, int n) {
-        double sum = 0;
-        int d = m;
-        int power = n;
-
-        while (true) {
-            double term;
-
-            if (power > 0) {
-                term = (double) hexExponentModulo(power, d) / d;
-            } else {
-                term = Math.pow(16, power) / d;
-                if (term < Epsilon) {
-                    break;
-                }
-            }
-
-            sum += term;
-            power--;
-            d += 8;
+    public static void createThread(int start, int digitsPerSum, int N, List<SumThread> threads, Object lockObject){
+        for (int i = 0; i < N; i++) {
+            SumThread t = new SumThread(start, digitsPerSum, lockObject);
+            start += digitsPerSum;
+            threads.add(t);
+            t.start();
         }
-
-        return sum;
     }
 
-    /// <summary>
-    /// Return 16^p mod m.
-    /// </summary>
-    /// <param name="p"></param>
-    /// <param name="m"></param>
-    /// <returns></returns>
-    private static int hexExponentModulo(int p, int m) {
-        int power = 1;
-        while (power * 2 <= p) {
-            power *= 2;
-        }
 
-        int result = 1;
+    public static void getResults(List<SumThread> threads, byte[] digits, int digitsPerSum){
+        int total_amount = 0;
+        for (SumThread t : threads){
+            try {
+                t.join();
 
-        while (power > 0) {
-            if (p >= power) {
-                result *= 16;
-                result %= m;
-                p -= power;
-            }
-
-            power /= 2;
-
-            if (power > 0) {
-                result *= result;
-                result %= m;
+            } catch (InterruptedException e){
+                e.printStackTrace();
             }
         }
+    }
 
-        return result;
+    private static void stopAndExecute(List<SumThread> threads, Object lockObject){
+
     }
 
 }
