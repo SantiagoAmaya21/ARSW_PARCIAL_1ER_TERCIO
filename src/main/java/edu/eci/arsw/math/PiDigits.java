@@ -73,13 +73,19 @@ public class PiDigits {
         for (SumThread t : threads){
             try {
                 t.join();
-
+                getThreadDigits(t, digits, digitsPerSum);
             } catch (InterruptedException e){
                 e.printStackTrace();
             }
         }
     }
 
+    private static void getThreadDigits(SumThread t, byte[] digits, int digitsPerSum){
+        byte[] threadDigits = t.getDigits();
+        for (int i = 0; i < threadDigits.length; i++) {
+            digits[i * digitsPerSum] = threadDigits[i];
+        }
+    }
     private static void stopAndExecute(List<SumThread> threads, Object lockObject){
 
     }

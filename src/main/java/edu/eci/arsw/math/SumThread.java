@@ -112,4 +112,8 @@ public class SumThread extends Thread{
     public void setInExecution(boolean execute){
         this.inExecution = execute;
     }
+
+    public byte[] getDigits(){
+        return digits;
+    }
 }
